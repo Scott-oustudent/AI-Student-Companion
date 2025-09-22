@@ -1,43 +1,110 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BottomNav from './components/BottomNav';
 import ToolsHome from './components/tools/ToolsHome';
 import WellnessHome from './components/wellness/WellnessHome';
 import CommunityHome from './components/community/CommunityHome';
-import { BookOpenIcon, HeartIcon, UsersIcon, SparklesIcon } from './components/icons/Icons';
+import ProfilePage from './components/profile/ProfilePage';
+import AdminDashboard from './components/dashboards/AdminDashboard';
+import StaffDashboard from './components/dashboards/StaffDashboard';
+import ModeratorDashboard from './components/dashboards/ModeratorDashboard';
+import AuthPage from './components/auth/AuthPage';
+import Onboarding from './components/Onboarding';
+import GlobalSearch from './components/GlobalSearch';
+import { useTheme } from './context/ThemeContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
+import * as db from './services/databaseService';
+// FIX: Import UserSession and other types from types.ts to avoid circular dependencies.
+import { UserRole, Section, UserSession } from './types';
 
-export type Section = 'tools' | 'wellness' | 'community';
-
-const App: React.FC = () => {
+function App() {
+  const [session, setSession] = useState<UserSession | null>(null);
   const [activeSection, setActiveSection] = useState<Section>('tools');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem('userSession');
+      if (savedSession) {
+        setSession(JSON.parse(savedSession));
+      }
+    } catch (e) {
+      console.error("Could not parse user session", e);
+      localStorage.removeItem('userSession');
+    }
+  }, []);
+
+  const handleLogin = (userSession: UserSession) => {
+    localStorage.setItem('userSession', JSON.stringify(userSession));
+    setSession(userSession);
+    setActiveSection('tools'); 
+
+    // Check for onboarding
+    const hasOnboarded = db.getOnboardingStatus();
+    if (!hasOnboarded) {
+        setShowOnboarding(true);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userSession');
+    setSession(null);
+  };
+
+  const handleOnboardingComplete = () => {
+    db.setOnboardingStatus(true);
+    setShowOnboarding(false);
+  };
 
   const renderSection = () => {
+    if (!session) return null;
+
     switch (activeSection) {
       case 'tools':
         return <ToolsHome />;
       case 'wellness':
         return <WellnessHome />;
       case 'community':
-        return <CommunityHome />;
+        return <CommunityHome currentUserEmail={session.email} currentUserRole={session.role} />;
+      case 'profile':
+        return <ProfilePage onLogout={handleLogout} session={session} />;
+      case 'admin':
+        return session.role === 'Administrator' ? <AdminDashboard currentUserEmail={session.email} /> : null;
+      case 'staff':
+         return ['Administrator', 'Staff'].includes(session.role) ? <StaffDashboard currentUserEmail={session.email} /> : null;
+      case 'moderator':
+        return ['Administrator', 'Staff', 'Moderator'].includes(session.role) ? <ModeratorDashboard currentUserEmail={session.email} /> : null;
       default:
         return <ToolsHome />;
     }
   };
 
+  if (!session) {
+    return (
+      <div className={`w-full min-h-screen font-sans text-gray-900 dark:text-gray-100 ${theme.className}`}>
+        <AuthPage onLogin={handleLogin} />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background text-text_primary font-sans flex flex-col">
-      <header className="bg-surface p-4 shadow-lg sticky top-0 z-10 flex items-center justify-center">
-        <SparklesIcon className="w-8 h-8 text-primary" />
-        <h1 className="text-xl font-bold ml-2">AI Student Companion</h1>
-      </header>
-      
-      <main className="flex-grow p-4 pb-24 overflow-y-auto">
-        {renderSection()}
-      </main>
-      
-      <BottomNav activeSection={activeSection} setActiveSection={setActiveSection} />
-    </div>
+    <SubscriptionProvider session={session}>
+      <div className={`w-full min-h-screen font-sans text-gray-900 dark:text-gray-100 ${theme.className}`}>
+        {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+        {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
+        <main className="p-4 pb-24 max-w-7xl mx-auto">
+          {renderSection()}
+        </main>
+        <BottomNav 
+          activeSection={activeSection} 
+          setActiveSection={setActiveSection} 
+          role={session.role}
+          onSearchClick={() => setShowSearch(true)}
+        />
+      </div>
+    </SubscriptionProvider>
   );
-};
+}
 
 export default App;

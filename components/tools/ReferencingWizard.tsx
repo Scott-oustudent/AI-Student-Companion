@@ -110,7 +110,8 @@ const ReferencingWizard: React.FC = () => {
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     const detailsString = Object.entries(sourceDetails)
-      .filter(([, value]) => value.trim() !== '')
+      // FIX: Added a type guard to ensure the value is a string before trimming, resolving an issue where TypeScript inferred the type as 'unknown'.
+      .filter(([, value]) => typeof value === 'string' && value.trim() !== '')
       .map(([key, value]) => `${key}: ${value}`)
       .join('\n');
 
@@ -136,24 +137,24 @@ const ReferencingWizard: React.FC = () => {
   const currentFields = publicationTypes[sourceType];
 
   return (
-    <div className="bg-surface p-6 rounded-lg shadow-lg">
+    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
       <form onSubmit={handleGenerate} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-text_secondary mb-1">Referencing Style</label>
+          <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Referencing Style</label>
           <select
             value={style}
             onChange={(e) => setStyle(e.target.value as ReferencingStyle)}
-            className="w-full p-2 bg-gray-900 border border-gray-600 rounded-md focus:ring-primary focus:outline-none"
+            className="w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:outline-none"
           >
             {ReferencingStyles.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-text_secondary mb-1">Source Type</label>
+          <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Source Type</label>
           <select
             value={sourceType}
             onChange={(e) => setSourceType(e.target.value as keyof typeof publicationTypes)}
-            className="w-full p-2 bg-gray-900 border border-gray-600 rounded-md focus:ring-primary focus:outline-none"
+            className="w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:outline-none"
           >
             {Object.keys(publicationTypes).map(type => (
               <option key={type} value={type}>{type}</option>
@@ -163,13 +164,13 @@ const ReferencingWizard: React.FC = () => {
         
         {currentFields.map(field => (
             <div key={field.name}>
-                 <label className="block text-sm font-medium text-text_secondary mb-1">{field.label}</label>
+                 <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{field.label}</label>
                  <input
                     type="text"
                     value={sourceDetails[field.name] || ''}
                     onChange={(e) => handleDetailChange(field.name, e.target.value)}
                     placeholder={field.placeholder}
-                    className="w-full p-2 bg-gray-900 border border-gray-600 rounded-md focus:ring-primary focus:outline-none"
+                    className="w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:outline-none"
                  />
             </div>
         ))}
@@ -177,7 +178,7 @@ const ReferencingWizard: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 disabled:bg-gray-600"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 disabled:bg-blue-400"
         >
           {isLoading ? 'Generating...' : 'Generate Citation'}
         </button>
@@ -185,18 +186,18 @@ const ReferencingWizard: React.FC = () => {
       
       {citations.length > 0 && (
         <div className="mt-6">
-          <h4 className="font-bold text-lg mb-2 text-primary-light">Saved Citations:</h4>
+          <h4 className="font-bold text-lg mb-2 text-blue-700 dark:text-blue-400">Saved Citations:</h4>
           <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
             {citations.map(c => (
-              <div key={c.id} className="p-3 bg-gray-900 border border-gray-700 rounded-md">
+              <div key={c.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md">
                 <p 
-                    className="text-sm font-mono bg-gray-800 p-2 rounded cursor-pointer"
+                    className="text-sm font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded cursor-pointer"
                     onClick={() => navigator.clipboard.writeText(c.formattedCitation)}
                     title="Click to copy"
                 >
                     {c.formattedCitation}
                 </p>
-                <p className="text-xs text-text_secondary mt-2">Style: {c.style} | Source: {c.sourceDetails}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Style: {c.style} | Source: {c.sourceDetails}</p>
               </div>
             ))}
           </div>
